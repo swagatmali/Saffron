@@ -21,18 +21,16 @@ kotlin {
     wasmJs {
         browser {
             commonWebpackConfig {
+                // Enable CSS support for hot reload of styles
+                cssSupport {
+                    enabled.set(true)
+                }
+
+                // Configure webpack dev server for hot reload
                 devServer = (devServer ?: KotlinWebpackConfig.DevServer()).apply {
-                    static = (static ?: mutableListOf()).apply {
-                        // Add the build directory as static content
-                        add(project.projectDir.resolve("src/wasmJsMain/resources").absolutePath)
-                    }
-                    // Enable hot module replacement
-                    hot = true
                     // Auto open browser
                     open = true
-                    // Watch for file changes
-                    liveReload = true
-                    // Port configuration (optional)
+                    // Set port
                     port = 8080
                 }
             }
