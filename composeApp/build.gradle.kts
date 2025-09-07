@@ -26,14 +26,6 @@ kotlin {
                 cssSupport {
                     enabled.set(true)
                 }
-
-                // Configure webpack dev server for hot reload
-                devServer = (devServer ?: KotlinWebpackConfig.DevServer()).apply {
-                    // Auto open browser
-                    open = true
-                    // Set port
-                    port = 8080
-                }
             }
         }
         binaries.executable()
