@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -21,39 +22,92 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.ui.tooling.preview.Preview
+import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.logging.*
+import io.ktor.client.request.*
+import io.ktor.serialization.kotlinx.json.*
+import kotlinx.serialization.json.Json
+
+@Serializable
+data class User(
+    val rollNumber: Int,
+    val firstName: String,
+    val lastName: String,
+    val mobileNumber: Int
+)
+
+@Serializable
+data class UserResponse(
+    val user: List<User>
+)
+
+class UserApiService {
+    private val client = HttpClient {
+        install(ContentNegotiation) {
+            json(Json {
+                ignoreUnknownKeys = true
+                isLenient = true
+            })
+        }
+        install(Logging) {
+            level = LogLevel.INFO
+        }
+    }
+
+    suspend fun fetchUsers(): List<User> {
+        val responseText: String =
+            client.get("https://script.google.com/macros/s/AKfycbyTclLfP1PSzLDFlHacmwU6EYbcr5o0mdaWea4MMlNVLF7uKJ_9D93HMucnCQBzPx3_ow/exec?action=getAll")
+                .body()
+        val json = Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+        }
+        val response: UserResponse = json.decodeFromString(responseText)
+        return response.user
+    }
+}
 
 @Composable
 @Preview
 fun App() {
     MaterialTheme {
-        val allFirstNames = remember {
-            listOf(
-                "Alice",
-                "Bob",
-                "Charlie",
-                "Diana",
-                "Edward",
-                "Fiona",
-                "George",
-                "Hannah",
-                "Ian",
-                "Julia",
-                "Kevin",
-                "Linda",
-                "Michael",
-                "Nancy",
-                "Oliver"
-            )
+        var userFirstNames by remember { mutableStateOf<List<String>>(emptyList()) }
+        var isLoading by remember { mutableStateOf(true) }
+        var errorMessage by remember { mutableStateOf<String?>(null) }
+        var searchQuery by remember { mutableStateOf("") }
+        val scope = rememberCoroutineScope()
+        val userApiService = remember { UserApiService() }
+
+        val filteredFirstNames = remember(searchQuery, userFirstNames) {
+            if (searchQuery.isBlank()) {
+                userFirstNames
+            } else {
+                userFirstNames.filter {
+                    it.contains(searchQuery, ignoreCase = true)
+                }
+            }
         }
 
-        var searchQuery by remember { mutableStateOf("") }
-
-        val filteredNames = remember(searchQuery) {
-            if (searchQuery.isBlank()) {
-                allFirstNames
-            } else {
-                allFirstNames.filter {
-                    it.contains(searchQuery, ignoreCase = true)
+        LaunchedEffect(Unit) {
+            scope.launch {
+                try {
+                    println("Starting to fetch users from API...")
+                    val response = userApiService.fetchUsers()
+                    userFirstNames = response.map { it.firstName }
+                    println("=== All User First Names ===")
+                    userFirstNames.forEach { firstName ->
+                        println("First Name: $firstName")
+                    }
+                    println("=== Total: ${userFirstNames.size} user first names ===")
+                    isLoading = false
+                } catch (e: Exception) {
+                    println("Error fetching users: ${e.message}")
+                    errorMessage = "Failed to load users: ${e.message}"
+                    isLoading = false
                 }
             }
         }
@@ -72,35 +126,71 @@ fun App() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),
-                placeholder = { Text("Search names...") },
+                placeholder = { Text("Search first names...") },
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                enabled = !isLoading
             )
 
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(filteredNames) { name ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            when {
+                isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            contentAlignment = Alignment.CenterStart
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
+                            CircularProgressIndicator()
                             Text(
-                                text = name,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text = "Loading users from API...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(top = 16.dp)
                             )
+                        }
+                    }
+                }
+
+                errorMessage != null -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = errorMessage!!,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(filteredFirstNames) { firstName ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.CenterStart
+                                ) {
+                                    Text(
+                                        text = "First Name: $firstName",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
                         }
                     }
                 }
