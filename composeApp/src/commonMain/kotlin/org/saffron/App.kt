@@ -34,10 +34,14 @@ import kotlinx.serialization.json.Json
 
 @Serializable
 data class User(
-    val rollNumber: Int,
-    val firstName: String,
-    val lastName: String,
-    val mobileNumber: Int
+    val srNo: String,
+    val receiptDate: String,
+    val receiptNo: String,
+    val flatNo: String,
+    val amt: String,
+    val transactionId: String,
+    val purpose: String,
+    val expiryDate: String,
 )
 
 @Serializable
@@ -60,7 +64,7 @@ class UserApiService {
 
     suspend fun fetchUsers(): List<User> {
         val responseText: String =
-            client.get("https://script.google.com/macros/s/AKfycbyTclLfP1PSzLDFlHacmwU6EYbcr5o0mdaWea4MMlNVLF7uKJ_9D93HMucnCQBzPx3_ow/exec?action=getAll")
+            client.get("https://script.google.com/macros/s/AKfycbxeOD_qnwBjVpomGE_lVb0uHTA3QYqFkrcWf3KTC2DkHocXAdlWl0md2gDcIjMgVXP8sw/exec?action=getAll")
                 .body()
         val json = Json {
             ignoreUnknownKeys = true
@@ -95,18 +99,11 @@ fun App() {
         LaunchedEffect(Unit) {
             scope.launch {
                 try {
-                    println("Starting to fetch users from API...")
                     val response = userApiService.fetchUsers()
-                    userFirstNames = response.map { it.firstName }
-                    println("=== All User First Names ===")
-                    userFirstNames.forEach { firstName ->
-                        println("First Name: $firstName")
-                    }
-                    println("=== Total: ${userFirstNames.size} user first names ===")
+                    userFirstNames = response.map { it.flatNo }
                     isLoading = false
                 } catch (e: Exception) {
-                    println("Error fetching users: ${e.message}")
-                    errorMessage = "Failed to load users: ${e.message}"
+                    errorMessage = "Failed to load data: ${e.message}"
                     isLoading = false
                 }
             }
@@ -126,7 +123,7 @@ fun App() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),
-                placeholder = { Text("Search first names...") },
+                placeholder = { Text("Search...") },
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
                 enabled = !isLoading
@@ -143,7 +140,7 @@ fun App() {
                         ) {
                             CircularProgressIndicator()
                             Text(
-                                text = "Loading users from API...",
+                                text = "Loading...",
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.padding(top = 16.dp)
                             )
@@ -185,7 +182,7 @@ fun App() {
                                     contentAlignment = Alignment.CenterStart
                                 ) {
                                     Text(
-                                        text = "First Name: $firstName",
+                                        text = "Flat No: $firstName",
                                         style = MaterialTheme.typography.bodyLarge,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
