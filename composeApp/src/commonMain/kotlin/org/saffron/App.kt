@@ -79,19 +79,19 @@ class UserApiService {
 @Preview
 fun App() {
     MaterialTheme {
-        var userFirstNames by remember { mutableStateOf<List<String>>(emptyList()) }
+        var users by remember { mutableStateOf<List<User>>(emptyList()) }
         var isLoading by remember { mutableStateOf(true) }
         var errorMessage by remember { mutableStateOf<String?>(null) }
         var searchQuery by remember { mutableStateOf("") }
         val scope = rememberCoroutineScope()
         val userApiService = remember { UserApiService() }
 
-        val filteredFirstNames = remember(searchQuery, userFirstNames) {
+        val filteredUsers = remember(searchQuery, users) {
             if (searchQuery.isBlank()) {
-                userFirstNames
+                users
             } else {
-                userFirstNames.filter {
-                    it.contains(searchQuery, ignoreCase = true)
+                users.filter {
+                    it.flatNo.contains(searchQuery, ignoreCase = true)
                 }
             }
         }
@@ -100,7 +100,7 @@ fun App() {
             scope.launch {
                 try {
                     val response = userApiService.fetchUsers()
-                    userFirstNames = response.map { it.flatNo }
+                    users = response
                     isLoading = false
                 } catch (e: Exception) {
                     errorMessage = "Failed to load data: ${e.message}"
@@ -166,7 +166,7 @@ fun App() {
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(filteredFirstNames) { firstName ->
+                        items(filteredUsers) { user ->
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
@@ -182,7 +182,7 @@ fun App() {
                                     contentAlignment = Alignment.CenterStart
                                 ) {
                                     Text(
-                                        text = "Flat No: $firstName",
+                                        text = "${user.flatNo} | Expiry: ${user.expiryDate}",
                                         style = MaterialTheme.typography.bodyLarge,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
