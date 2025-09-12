@@ -64,7 +64,7 @@ class UserApiService {
 
     suspend fun fetchUsers(): List<User> {
         val responseText: String =
-            client.get("https://script.google.com/macros/s/AKfycbxeOD_qnwBjVpomGE_lVb0uHTA3QYqFkrcWf3KTC2DkHocXAdlWl0md2gDcIjMgVXP8sw/exec?action=getAll")
+            client.get("https://script.google.com/macros/s/AKfycbxYnY6bGjQQHZtZwp_I_uukOKGNZH3Vy7HyuF8ljEE4SiDumJIEsGAFQ4OU7htwZa6tDg/exec?action=getAll")
                 .body()
         val json = Json {
             ignoreUnknownKeys = true
